@@ -1,30 +1,40 @@
-﻿# docker-compose.yml
-version: '3.8'
-
+﻿version: '3.8'
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: invoice-db
+  app:
+    build: .
+    ports:
+      - "8080:8080"
     environment:
-      POSTGRES_USER: invoice_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: invoice_db
+      - POSTGRES_URL=postgresql://user:password@db:5432/invoices?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-very-secure-secret-key
+      - FILE_STORAGE_PATH=/app/storage/files
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./storage/files:/app/storage/files
+
+  db:
+    image: postgres:14
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=invoices
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U invoice_user -d invoice_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - invoice-network
+      - postgres-db:/var/lib/postgresql/data
 
-networks:
-  invoice-network:
-    driver: bridge
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
 
 volumes:
-  postgres_data:
+  postgres-db:
+    driver: local
+  redis-data:
+    driver: local
