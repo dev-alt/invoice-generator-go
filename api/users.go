@@ -1,4 +1,4 @@
-﻿package api
+package api
 
 import (
 	"net/http"
@@ -8,25 +8,38 @@ import (
 	"invoice-generator-go/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func registerUser(c *gin.Context) {
-	var user models.User
-	if err := c.ShouldBindJSON(&user); err != nil {
+	var tempUser struct {
+		Email       string `json:"email"`
+		Password    string `json:"password"` // Temporary field to receive the password
+		CompanyName string `json:"company_name"`
+	}
+
+	if err := c.ShouldBindJSON(&tempUser); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Hash the password
-	hashedPassword, err := utils.HashPassword(user.PasswordHash)
+	hashedPassword, err := utils.HashPassword(tempUser.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
 		return
 	}
-	user.PasswordHash = hashedPassword
+
+	// Create new user with provided details
+	newUser := models.User{
+		ID:           uuid.New(),
+		Email:        tempUser.Email,
+		PasswordHash: hashedPassword,
+		CompanyName:  tempUser.CompanyName,
+	}
 
 	// Save the user to the database
-	userID, err := storage.CreateUser(user) // Implement this in storage/users.go
+	userID, err := storage.CreateUser(&newUser)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
@@ -46,21 +59,18 @@ func loginUser(c *gin.Context) {
 		return
 	}
 
-	// Get user by email
-	user, err := storage.GetUserByEmail(loginDetails.Email) // Implement this in storage/users.go
+	user, err := storage.GetUserByEmail(loginDetails.Email)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	// Check password
 	if !utils.CheckPasswordHash(loginDetails.Password, user.PasswordHash) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	// Generate JWT token
-	token, err := utils.GenerateJWT(user.ID)
+	token, err := utils.GenerateJWT(user.ID.String())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return

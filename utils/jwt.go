@@ -1,4 +1,4 @@
-﻿package utils
+package utils
 
 import (
 	"fmt"
@@ -8,13 +8,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func GenerateJWT(userID uint) (string, error) {
+func GenerateJWT(userID string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": userID,
 		"exp":     time.Now().Add(time.Hour * 24).Unix(), // Token expires in 24 hours
 	})
 
-	tokenString, err := token.SignedString([]byte(config.AppConfig.JWTSecret))
+	tokenString, err := token.SignedString([]byte(config.GetConfig().JWTSecret))
 	if err != nil {
 		return "", fmt.Errorf("error creating token: %v", err)
 	}
@@ -22,12 +22,14 @@ func GenerateJWT(userID uint) (string, error) {
 }
 
 func ValidateJWT(tokenString string) (jwt.MapClaims, error) {
+	cfg := config.GetConfig()
+
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Validate the signing method
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(config.AppConfig.JWTSecret), nil
+		return []byte(cfg.JWTSecret), nil
 	})
 
 	if err != nil {
@@ -36,7 +38,6 @@ func ValidateJWT(tokenString string) (jwt.MapClaims, error) {
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		return claims, nil
-	} else {
-		return nil, fmt.Errorf("invalid token")
 	}
+	return nil, fmt.Errorf("invalid token")
 }

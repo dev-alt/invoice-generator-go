@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"invoice-generator-go/api"
@@ -11,17 +11,18 @@ import (
 )
 
 func main() {
-
-	// Load environment variables from .env file
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
+	// Try to load .env file but don't fail if it doesn't exist
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Note: .env file not found, using environment variables")
 	}
+
 	// Load configuration
-	config.LoadAppConfig()
+	appConfig := config.LoadAppConfig()
 
 	// Connect to the database
-	storage.ConnectPostgres()
+	if err := storage.ConnectPostgres(appConfig.PostgresURL); err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
 
 	// Set up Gin router
 	r := gin.Default()
@@ -30,5 +31,8 @@ func main() {
 	api.SetupRoutes(r)
 
 	// Start the server
-	r.Run(":8080")
+	log.Printf("Starting server on :8080")
+	if err := r.Run(":8080"); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 }

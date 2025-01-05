@@ -1,12 +1,16 @@
-﻿package api
+package api
 
 import (
-	"invoice-generator-go/models"
-	"invoice-generator-go/storage"
+	_ "fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
+
+	"invoice-generator-go/models"
+	"invoice-generator-go/storage"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func uploadTemplate(c *gin.Context) {
@@ -17,6 +21,13 @@ func uploadTemplate(c *gin.Context) {
 		return
 	}
 
+	// Parse user ID as UUID
+	userUUID, err := uuid.Parse(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
+		return
+	}
+
 	// Get the uploaded file
 	file, err := c.FormFile("template")
 	if err != nil {
@@ -24,12 +35,10 @@ func uploadTemplate(c *gin.Context) {
 		return
 	}
 
-	// Validate file type (optional) - e.g., check for .html or .tex extension
-
 	// Read file content
 	src, err := file.Open()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open file"})
 		return
 	}
 	defer src.Close()
@@ -40,13 +49,19 @@ func uploadTemplate(c *gin.Context) {
 		return
 	}
 
-	// Save template to database
+	// Create a new template
 	template := models.Template{
-		UserID:  userID.(uint), // Type assertion to uint
-		Name:    file.Filename,
-		Content: string(fileBytes),
+		ID:        uuid.New(),
+		UserID:    userUUID,
+		Name:      c.PostForm("name"), // Get the template name from the form data
+		Language:  c.PostForm("language"),
+		Content:   string(fileBytes),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
-	templateID, err := storage.CreateTemplate(template) // Implement this
+
+	// Save template to the database
+	templateID, err := storage.CreateTemplate(&template)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save template"})
 		return
@@ -54,6 +69,7 @@ func uploadTemplate(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Template uploaded", "template_id": templateID})
 }
+
 func listTemplates(c *gin.Context) {
 	// Get user ID from context (set by AuthMiddleware)
 	userID, exists := c.Get("userID")
@@ -62,8 +78,15 @@ func listTemplates(c *gin.Context) {
 		return
 	}
 
+	// Parse user ID as UUID
+	userUUID, err := uuid.Parse(userID.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
+		return
+	}
+
 	// Get templates for the user
-	templates, err := storage.GetTemplatesByUserID(userID.(uint)) // Implement this
+	templates, err := storage.GetTemplatesByUserID(userUUID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve templates"})
 		return

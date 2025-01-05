@@ -1,65 +1,66 @@
-﻿package storage
+package storage
 
 import (
-	"database/sql"
 	"fmt"
 	"invoice-generator-go/models"
+
+	"github.com/google/uuid"
 )
 
-func CreateTemplate(template models.Template) (uint, error) {
-	var id uint
-	err := DB.QueryRow(`
-        INSERT INTO templates (user_id, name, content)
-        VALUES ($1, $2, $3)
+// CreateTemplate inserts a new template into the database.
+func CreateTemplate(template *models.Template) (string, error) {
+	template.ID = uuid.New()
+	query := `
+        INSERT INTO templates (id, user_id, name, language, background_url, logo_url, content, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING id
-    `, template.UserID, template.Name, template.Content).Scan(&id)
+    `
 
+	var id uuid.UUID
+	err := DB.QueryRow(query, template.ID, template.UserID, template.Name, template.Language, template.BackgroundURL, template.LogoURL, template.Content, template.CreatedAt, template.UpdatedAt).Scan(&id)
 	if err != nil {
-		return 0, err
+		return "", fmt.Errorf("failed to insert template: %v", err)
 	}
 
-	return id, nil
+	return id.String(), nil
 }
 
 // GetTemplateByID retrieves a template by its ID from the database.
-func GetTemplateByID(templateID int) (*models.Template, error) {
+func GetTemplateByID(templateID uuid.UUID) (*models.Template, error) {
 	var template models.Template
-	err := DB.QueryRow(`
-        SELECT id, user_id, name, content, created_at
+	query := `
+        SELECT id, user_id, name, language, background_url, logo_url, content, created_at, updated_at
         FROM templates
         WHERE id = $1
-    `, templateID).Scan(&template.ID, &template.UserID, &template.Name, &template.Content, &template.CreatedAt)
-
+    `
+	err := DB.QueryRow(query, templateID).Scan(&template.ID, &template.UserID, &template.Name, &template.Language, &template.BackgroundURL, &template.LogoURL, &template.Content, &template.CreatedAt, &template.UpdatedAt)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			// Handle the case where no template with the given ID is found
-			return nil, fmt.Errorf("template with ID %d not found", templateID)
-		}
-		// Handle other potential database errors
-		return nil, fmt.Errorf("error querying template by ID: %v", err)
+		return nil, fmt.Errorf("failed to get template by ID: %v", err)
 	}
 
 	return &template, nil
 }
 
-func GetTemplatesByUserID(userID uint) ([]models.Template, error) {
-	rows, err := DB.Query(`
-        SELECT id, name, content, created_at
+// GetTemplatesByUserID retrieves templates by their user ID from the database.
+func GetTemplatesByUserID(userID uuid.UUID) ([]models.Template, error) {
+	var templates []models.Template
+	query := `
+        SELECT id, user_id, name, language, background_url, logo_url, content, created_at, updated_at
         FROM templates
         WHERE user_id = $1
-    `, userID)
+    `
+	rows, err := DB.Query(query, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get templates by user ID: %v", err)
 	}
 	defer rows.Close()
 
-	var templates []models.Template
 	for rows.Next() {
-		var t models.Template
-		if err := rows.Scan(&t.ID, &t.Name, &t.Content, &t.CreatedAt); err != nil {
-			return nil, err
+		var template models.Template
+		if err := rows.Scan(&template.ID, &template.UserID, &template.Name, &template.Language, &template.BackgroundURL, &template.LogoURL, &template.Content, &template.CreatedAt, &template.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan template: %v", err)
 		}
-		templates = append(templates, t)
+		templates = append(templates, template)
 	}
 
 	return templates, nil

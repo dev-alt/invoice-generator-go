@@ -1,36 +1,45 @@
-﻿package config
+package config
 
 import (
-	"fmt"
-	"log"
-
-	"github.com/spf13/viper"
+	"os"
+	"sync"
 )
 
-type Config struct {
-	PostgresURL     string `mapstructure:"POSTGRES_URL"`
-	RedisURL        string `mapstructure:"REDIS_URL"`
-	FileStoragePath string `mapstructure:"FILE_STORAGE_PATH"`
-	JWTSecret       string `mapstructure:"JWT_SECRET"`
+type AppConfig struct {
+	PostgresURL     string
+	RedisURL        string
+	JWTSecret       string
+	FileStoragePath string
 }
 
-var AppConfig *Config
+var (
+	appConfig  *AppConfig // Change this to a pointer
+	configOnce sync.Once
+)
 
-func LoadAppConfig() {
-	viper.SetConfigName(".env") // Name of config file (without extension)
-	viper.SetConfigType("env")  // The file type (env, yaml, json, etc.)
-	viper.AddConfigPath(".")    // Look for config in the working directory
-
-	// Read in the config file and handle errors
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("Error reading config file, %s", err)
+func getEnvOrDefault(key, defaultValue string) string {
+	if value, exists := os.LookupEnv(key); exists && value != "" {
+		return value
 	}
+	return defaultValue
+}
 
-	// Unmarshal the config into the AppConfig struct
-	err := viper.Unmarshal(&AppConfig)
-	if err != nil {
-		log.Fatalf("Unable to decode into struct, %v", err)
-	}
+func LoadAppConfig() *AppConfig { // Return a pointer
+	configOnce.Do(func() {
+		appConfig = &AppConfig{ // Initialize the pointer
+			PostgresURL:     getEnvOrDefault("POSTGRES_URL", "postgresql://invoice_user:password@localhost:5432/invoice_db?sslmode=disable"),
+			RedisURL:        getEnvOrDefault("REDIS_URL", "redis://localhost:6379"),
+			JWTSecret:       getEnvOrDefault("JWT_SECRET", "default-secret-key"),
+			FileStoragePath: getEnvOrDefault("FILE_STORAGE_PATH", "./storage/files"),
+		}
+	})
+	return appConfig
+}
 
-	fmt.Println("Configuration loaded successfully")
+// GetConfig returns the current configuration
+func GetConfig() *AppConfig { // Return a pointer
+	configOnce.Do(func() {
+		LoadAppConfig()
+	})
+	return appConfig
 }

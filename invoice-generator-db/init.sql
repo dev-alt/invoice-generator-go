@@ -19,7 +19,7 @@ CREATE TABLE templates (
                            language VARCHAR(50),
                            background_url TEXT,
                            logo_url TEXT,
-                           latex_template TEXT,
+                           content TEXT,
                            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -41,6 +41,7 @@ CREATE TABLE invoices (
                           tax_amount DECIMAL(15,2),
                           total_amount DECIMAL(15,2) NOT NULL,
                           notes TEXT,
+                          pdf_path TEXT,
                           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -52,7 +53,8 @@ CREATE TABLE invoice_items (
                                quantity DECIMAL(15,2) NOT NULL,
                                unit_price DECIMAL(15,2) NOT NULL,
                                total_price DECIMAL(15,2) NOT NULL,
-                               created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                               created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                               updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create indexes
@@ -83,5 +85,10 @@ CREATE TRIGGER update_templates_updated_at
 
 CREATE TRIGGER update_invoices_updated_at
     BEFORE UPDATE ON invoices
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_invoice_items_updated_at
+    BEFORE UPDATE ON invoice_items
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();

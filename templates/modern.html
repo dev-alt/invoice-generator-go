@@ -1,0 +1,106 @@
+﻿<!DOCTYPE html>
+<html lang="English">
+<head>
+    <title>Invoice</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 30px;
+            border: 1px solid #eee;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            max-width: 150px;
+            max-height: 100px;
+        }
+        .invoice-info {
+            text-align: right;
+        }
+        .invoice-info p {
+            margin: 5px 0;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .table th {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        .table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+        .totals {
+            margin-bottom: 30px;
+            text-align: right;
+        }
+        .totals p {
+            margin: 5px 0;
+        }
+        .footer {
+            text-align: center;
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <img class="logo" src="{{.CompanyLogoURL}}" alt="Company Logo">
+        <div class="invoice-info">
+            <p><strong>Invoice #:</strong> {{.Invoice.InvoiceNumber}}</p>
+            <p><strong>Date:</strong> {{.Invoice.CreatedAt.Format "2006-01-02"}}</p>
+            <p><strong>Status:</strong> {{.Invoice.Status}}</p>
+        </div>
+    </div>
+
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Description</th>
+            <th>Quantity</th>
+            <th>Unit Price</th>
+            <th>Total</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{range .Invoice.Items}}
+        <tr>
+            <td>{{.Description}}</td>
+            <td>{{.Quantity}}</td>
+            <td>{{.UnitPrice}}</td>
+            <td>{{.Total}}</td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+
+    <div class="totals">
+        <p><strong>Subtotal:</strong> {{.Invoice.Subtotal}}</p>
+        <p><strong>Tax:</strong> {{.Invoice.Tax}}</p>
+        <p><strong>Total:</strong> {{.Invoice.Total}}</p>
+    </div>
+
+    <div class="footer">
+        <p>Thank you for your business!</p>
+    </div>
+</div>
+</body>
+</html>

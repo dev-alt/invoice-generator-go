@@ -1,5 +1,5 @@
-﻿# Start from the official Golang image
-FROM golang:1.21 as builder
+﻿# Dockerfile
+FROM golang:1.23-bullseye as builder
 
 # Set the working directory inside the container
 WORKDIR /app
@@ -13,25 +13,29 @@ RUN go mod download
 # Copy the rest of the application code
 COPY . .
 
-# Build the Go application
-RUN go build -o invoice-generator ./cmd
+# Build the Go application (statically linked)
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o invoice-generator ./cmd
 
-# Start a new stage from a smaller base image (for a smaller final image size)
+# Start a new stage from scratch
 FROM debian:bullseye-slim
 
-# Install wkhtmltopdf (required for PDF generation)
-RUN apt-get update && apt-get install -y --no-install-recommends wkhtmltopdf
+# Install required dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    wkhtmltopdf \
+    ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
-# Set working directory for the final image
+# Set working directory
 WORKDIR /app
 
-# Copy the built executable from the builder stage
+# Create storage directory
+RUN mkdir -p /app/storage/files
+
+# Copy the built executable
 COPY --from=builder /app/invoice-generator .
 
-# Copy the .env.example (optional - if you want to include it in the image)
-# COPY --from=builder /app/.env.example .
-
-# Expose the port your application listens on (8080 in this case)
+# Expose port
 EXPOSE 8080
 
 # Command to run the application
