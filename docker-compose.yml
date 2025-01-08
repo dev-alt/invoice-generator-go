@@ -12,6 +12,8 @@
     depends_on:
       db:
         condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     volumes:
@@ -35,7 +37,7 @@
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # Added :ro for read-only
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - invoice-network
     healthcheck:
@@ -43,6 +45,18 @@
       interval: 10s
       timeout: 5s
       retries: 5
+
+  db-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    environment:
+      - POSTGRES_URL=postgresql://invoice_user:${DB_PASSWORD}@db:5432/invoice_db?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - invoice-network
 
   redis:
     image: redis:7-alpine

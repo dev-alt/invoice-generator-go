@@ -10,8 +10,9 @@ import (
 
 func GenerateJWT(userID string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": userID,
+		"user_id": userID,                                // Store user ID as string
 		"exp":     time.Now().Add(time.Hour * 24).Unix(), // Token expires in 24 hours
+		"iat":     time.Now().Unix(),                     // Issued at time
 	})
 
 	tokenString, err := token.SignedString([]byte(config.GetConfig().JWTSecret))
@@ -22,14 +23,12 @@ func GenerateJWT(userID string) (string, error) {
 }
 
 func ValidateJWT(tokenString string) (jwt.MapClaims, error) {
-	cfg := config.GetConfig()
-
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Validate the signing method
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(cfg.JWTSecret), nil
+		return []byte(config.GetConfig().JWTSecret), nil
 	})
 
 	if err != nil {

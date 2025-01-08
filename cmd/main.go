@@ -1,13 +1,14 @@
 package main
 
 import (
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"invoice-generator-go/api"
 	"invoice-generator-go/config"
 	"invoice-generator-go/storage"
 	"log"
-
-	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
+	"time"
 )
 
 func main() {
@@ -26,6 +27,16 @@ func main() {
 
 	// Set up Gin router
 	r := gin.Default()
+
+	// Configure CORS
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"}, // Add your frontend URL
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Setup API routes
 	api.SetupRoutes(r)

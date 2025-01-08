@@ -27,12 +27,15 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Add user ID to the context
-		if userID, ok := claims["user_id"].(float64); ok {
-			c.Set("userID", uint(userID))
-			c.Next()
-		} else {
+		// Extract user ID from claims
+		userID, ok := claims["user_id"].(string)
+		if !ok {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			return
 		}
+
+		// Add user ID to the context
+		c.Set("userID", userID)
+		c.Next()
 	}
 }

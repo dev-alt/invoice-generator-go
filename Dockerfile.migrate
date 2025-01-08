@@ -1,0 +1,19 @@
+﻿# Dockerfile.migrate
+FROM golang:1.23-bullseye
+
+WORKDIR /app
+
+# Install migrate tool and other dependencies
+RUN apt-get update && \
+    apt-get install -y postgresql-client dos2unix && \
+    go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+# Copy migration files
+COPY migrations/*.sql /app/migrations/
+
+# Copy and prepare the migration script
+COPY scripts/run-migrations.sh /app/run-migrations.sh
+RUN dos2unix /app/run-migrations.sh && \
+    chmod +x /app/run-migrations.sh
+
+ENTRYPOINT ["/bin/bash", "/app/run-migrations.sh"]
