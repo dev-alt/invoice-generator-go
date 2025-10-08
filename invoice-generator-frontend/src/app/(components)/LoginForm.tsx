@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/(components)/ui/button';
@@ -26,6 +26,11 @@ const LoginForm = () => {
     const router = useRouter();
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    // Mounted guard: don't render form on the server. This prevents hydration
+    // mismatches when browser extensions (password managers, login addons)
+    // modify the DOM (inject attributes/elements/styles) before React hydrates.
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
 
     const {
         register,
@@ -62,6 +67,8 @@ const LoginForm = () => {
             setIsLoading(false);
         }
     };
+
+    if (!mounted) return null;
 
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

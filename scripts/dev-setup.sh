@@ -16,8 +16,14 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Load environment variables
+# Load environment variables (strip CRLFs if the file was edited on Windows)
 if [ -f .env.development ]; then
+    # Remove DOS CRLF line endings in-place to avoid stray \r characters in variables
+    if command -v dos2unix >/dev/null 2>&1; then
+        dos2unix .env.development || true
+    else
+        sed -i 's/\r$//' .env.development || true
+    fi
     export $(grep -v '^#' .env.development | xargs)
 fi
 
@@ -75,8 +81,40 @@ fi
 # Install wkhtmltopdf (for PDF generation)
 if ! command -v wkhtmltopdf &> /dev/null; then
     echo -e "${YELLOW}wkhtmltopdf not found. Installing...${NC}"
-    sudo apt-get install -y wkhtmltopdf
-    echo -e "${GREEN}wkhtmltopdf installed${NC}"
+    # Make sure 'universe' is enabled (wkhtmltopdf and its Qt deps commonly live there).
+    # Install software-properties-common if necessary so add-apt-repository is available.
+    if ! grep -E -q "^deb .* (universe|multiverse)" /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null; then
+        echo "Enabling 'universe' repository to allow wkhtmltopdf installation"
+        sudo apt-get update -qq
+        sudo apt-get install -y software-properties-common || true
+        sudo add-apt-repository -y universe || true
+        sudo apt-get update -qq || true
+    fi
+
+    # Try the distro package first. On some systems this will fail due to missing Qt5
+    # dependencies. If that happens, fall back to a prebuilt .deb release for the
+    # current Ubuntu codename (e.g. jammy, focal).
+    if sudo apt-get install -y wkhtmltopdf; then
+        echo -e "${GREEN}wkhtmltopdf installed via apt${NC}"
+    else
+        echo -e "${YELLOW}apt install failed, attempting fallback to prebuilt .deb${NC}"
+        CODENAME=$(lsb_release -cs 2>/dev/null || echo "$(. /etc/os-release; echo $UBUNTU_CODENAME)")
+        # Known packaging release that contains builds for Ubuntu codenames
+        DEB_NAME="wkhtmltox_0.12.6-1.${CODENAME}_amd64.deb"
+        DEB_URL="https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/${DEB_NAME}"
+
+        echo "Downloading $DEB_NAME from $DEB_URL"
+        if sudo mkdir -p /tmp/wkhtml && wget -q -O /tmp/wkhtml/${DEB_NAME} "${DEB_URL}"; then
+            if sudo apt install -y /tmp/wkhtml/${DEB_NAME}; then
+                echo -e "${GREEN}wkhtmltopdf installed from ${DEB_NAME}${NC}"
+            else
+                echo -e "${RED}Failed to install wkhtmltopdf from ${DEB_NAME}${NC}"
+                echo "You can try installing wkhtmltopdf manually or enable the correct Ubuntu repositories (universe) for your release." 
+            fi
+        else
+            echo -e "${RED}Could not download ${DEB_URL}. Please install wkhtmltopdf manually.${NC}"
+        fi
+    fi
 else
     echo -e "${GREEN}wkhtmltopdf already installed${NC}"
 fi
@@ -133,13 +171,19 @@ echo "----------------------------------------"
 
 # Create database user and database
 echo "Creating database user and database..."
-sudo -u postgres psql -c "SELECT 1 FROM pg_user WHERE usename = '${DB_USER}';" | grep -q 1 || \
-    sudo -u postgres psql -c "CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASSWORD}';"
+# Run psql commands from /tmp so the 'postgres' user doesn't hit permission denied when changing directories
+if ! sudo -u postgres bash -lc "cd /tmp && psql -tAc \"SELECT 1 FROM pg_roles WHERE rolname='${DB_USER}'\"" | grep -q 1; then
+    sudo -u postgres bash -lc "cd /tmp && psql -c \"CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASSWORD}';\""
+else
+    # Ensure the password matches what we expect (helps when .env had CRLFs earlier)
+    sudo -u postgres bash -lc "cd /tmp && psql -c \"ALTER USER ${DB_USER} WITH PASSWORD '${DB_PASSWORD}';\""
+fi
 
-sudo -u postgres psql -c "SELECT 1 FROM pg_database WHERE datname = '${DB_NAME}';" | grep -q 1 || \
-    sudo -u postgres psql -c "CREATE DATABASE ${DB_NAME} OWNER ${DB_USER};"
+if ! sudo -u postgres bash -lc "cd /tmp && psql -tAc \"SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'\"" | grep -q 1; then
+    sudo -u postgres bash -lc "cd /tmp && psql -c \"CREATE DATABASE ${DB_NAME} OWNER ${DB_USER};\""
+fi
 
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_USER};"
+sudo -u postgres bash -lc "cd /tmp && psql -c \"GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_USER};\""
 
 echo -e "${GREEN}Database setup complete${NC}"
 
@@ -151,8 +195,26 @@ cd invoice-generator-backend
 
 # Run migrations
 if [ -d "migrations" ]; then
-    migrate -database "${POSTGRES_URL}" -path migrations up
-    echo -e "${GREEN}Migrations completed${NC}"
+    # Ensure required extensions exist (must be created by a superuser)
+    echo "Ensuring required Postgres extensions are present..."
+    # Use a simple quoting style so shell interpolation doesn't break the SQL
+    sudo -u postgres psql -d "${DB_NAME}" -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";' || true
+
+    # Run migrations; capture output to detect a dirty DB state and attempt to fix it.
+    MIG_OUT=$(migrate -database "${POSTGRES_URL}" -path migrations up 2>&1) || true
+    echo "$MIG_OUT"
+    if echo "$MIG_OUT" | grep -q "Dirty database version"; then
+        # Extract the dirty version number and force the migration tool to that version
+        DIRTY_VER=$(echo "$MIG_OUT" | grep -oE "Dirty database version [0-9]+" | awk '{print $4}')
+        if [ -n "$DIRTY_VER" ]; then
+            echo "Forcing migrate to version $DIRTY_VER to clear dirty state..."
+            migrate -database "${POSTGRES_URL}" -path migrations force "$DIRTY_VER" || true
+            migrate -database "${POSTGRES_URL}" -path migrations up || true
+        else
+            echo "Could not determine dirty migration version. Please inspect the database state manually."
+        fi
+    fi
+    echo -e "${GREEN}Migrations completed (or attempted).${NC}"
 else
     echo -e "${YELLOW}No migrations directory found, skipping...${NC}"
 fi

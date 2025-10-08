@@ -67,3 +67,5 @@ backups/
 # Compiled files
 *.o
 *.a
+.env.development
+.env.development
