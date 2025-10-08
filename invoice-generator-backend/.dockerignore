@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace
+bin/
+pkg/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+Dockerfile.migrate
+docker-compose.yml
+.dockerignore
+
+# Documentation
+README.md
+*.md
+
+# Storage (will be mounted)
+storage/files/*
+
+# Testing
+coverage.txt
+coverage.html
+
+# Frontend files
+node_modules/
+.next/

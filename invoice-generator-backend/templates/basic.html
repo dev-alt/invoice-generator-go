@@ -1,0 +1,78 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Invoice</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo {
+            max-width: 150px;
+            max-height: 100px;
+        }
+        .invoice-details {
+            margin-bottom: 20px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <img class="logo" src="{{.CompanyLogoURL}}" alt="Company Logo">
+    <h1>Invoice</h1>
+</div>
+
+<div class="invoice-details">
+    <p><strong>Invoice Number:</strong> {{.Invoice.InvoiceNumber}}</p>
+    <p><strong>Date:</strong> {{.Invoice.CreatedAt.Format "2006-01-02"}}</p>
+    <p><strong>Status:</strong> {{.Invoice.Status}}</p>
+</div>
+
+<table>
+    <thead>
+    <tr>
+        <th>Description</th>
+        <th>Quantity</th>
+        <th>Unit Price</th>
+        <th>Total</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{range .Invoice.Items}}
+    <tr>
+        <td>{{.Description}}</td>
+        <td>{{.Quantity}}</td>
+        <td>{{.UnitPrice}}</td>
+        <td>{{.Total}}</td>
+    </tr>
+    {{end}}
+    </tbody>
+</table>
+
+<div class="invoice-details">
+    <p><strong>Subtotal:</strong> {{.Invoice.Subtotal}}</p>
+    <p><strong>Tax:</strong> {{.Invoice.Tax}}</p>
+    <p><strong>Total:</strong> {{.Invoice.Total}}</p>
+</div>
+
+<div class="footer">
+    <p>Thank you for your business!</p>
+</div>
+</body>
+</html>

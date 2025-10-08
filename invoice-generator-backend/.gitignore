@@ -1,0 +1,7 @@
+﻿/invoice-generator-db/.env
+/.env
+.idea/dataSources.xml
+.idea/sqldialects.xml
+go.sum
+.env.local
+qodana.yaml

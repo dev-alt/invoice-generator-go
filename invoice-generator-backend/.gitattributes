@@ -1,0 +1,5 @@
+﻿# Set default behavior to automatically normalize line endings
+* text=auto
+
+# Shell scripts should always have LF endings, even on Windows
+*.sh text eol=lf
