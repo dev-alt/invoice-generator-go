@@ -1,0 +1,36 @@
+version: '3.8'
+
+# Development overrides for hot-reloading and debugging
+
+services:
+  backend:
+    build:
+      context: ./invoice-generator-backend
+      dockerfile: Dockerfile
+      target: builder  # Use builder stage for development
+    command: go run ./cmd
+    volumes:
+      - ./invoice-generator-backend:/app
+      - backend-storage:/app/storage/files
+      - /app/vendor  # Exclude vendor directory
+    environment:
+      - CGO_ENABLED=0
+      - GO_ENV=development
+
+  frontend:
+    build:
+      context: ./invoice-generator-frontend
+      dockerfile: Dockerfile
+      target: deps  # Use deps stage for development
+    command: npm run dev
+    volumes:
+      - ./invoice-generator-frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "3000:3000"
+
+volumes:
+  backend-storage:

@@ -1,0 +1,124 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: invoice-db
+    environment:
+      - POSTGRES_USER=invoice_user
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
+      - POSTGRES_DB=invoice_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./invoice-generator-backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - invoice-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U invoice_user -d invoice_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: invoice-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - invoice-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # Database Migrations
+  db-migrate:
+    build:
+      context: ./invoice-generator-backend
+      dockerfile: Dockerfile.migrate
+    container_name: invoice-db-migrate
+    environment:
+      - POSTGRES_URL=postgresql://invoice_user:${DB_PASSWORD:-your_secure_password_here}@db:5432/invoice_db?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - invoice-network
+
+  # Backend API (Go)
+  backend:
+    build:
+      context: ./invoice-generator-backend
+      dockerfile: Dockerfile
+    container_name: invoice-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - POSTGRES_URL=postgresql://invoice_user:${DB_PASSWORD:-your_secure_password_here}@db:5432/invoice_db?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret_change_this_in_production}
+      - FILE_STORAGE_PATH=/app/storage/files
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+    depends_on:
+      db:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    volumes:
+      - backend-storage:/app/storage/files
+    networks:
+      - invoice-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./invoice-generator-frontend
+      dockerfile: Dockerfile
+    container_name: invoice-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+      - NODE_ENV=production
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - invoice-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+networks:
+  invoice-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  backend-storage:
+    driver: local

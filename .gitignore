@@ -1,0 +1,69 @@
+# Development logs directory
+logs/
+*.log
+*.pid
+
+# Environment files
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.development
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backend
+invoice-generator-backend/storage/files/*
+!invoice-generator-backend/storage/files/.gitkeep
+invoice-generator-backend/invoice-generator
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Frontend
+invoice-generator-frontend/node_modules/
+invoice-generator-frontend/.next/
+invoice-generator-frontend/out/
+invoice-generator-frontend/.cache/
+invoice-generator-frontend/build/
+invoice-generator-frontend/.vercel/
+
+# Testing
+coverage/
+*.test
+*.out
+coverage.txt
+coverage.html
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Backups
+backups/
+*.backup
+*.bak
+
+# Docker volumes
+.docker/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Compiled files
+*.o
+*.a
