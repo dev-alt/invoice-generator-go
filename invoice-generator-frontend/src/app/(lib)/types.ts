@@ -89,6 +89,7 @@ export interface InvoiceTotalsProps {
   subtotal: number;
   taxAmount: number;
   totalAmount: number;
+  taxRate: number;
   currencyCode: CurrencyCode;
   formatCurrency: (amount: number, currencyCode: CurrencyCode) => string;
 }

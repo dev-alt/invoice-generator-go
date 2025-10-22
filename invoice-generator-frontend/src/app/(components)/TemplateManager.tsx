@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Template } from '@/(lib)/types';
-import { Label } from '@/(components)/ui/label';
 import {
     Select,
     SelectContent,
@@ -11,7 +10,7 @@ import {
     SelectValue,
 } from "@/(components)/ui/select";
 import { FileBadge2 } from 'lucide-react';
-import apiClient from '@/(lib)/api-client';
+import { templateAPI } from '@/(lib)/api-client';
 
 interface TemplateManagerProps {
     onTemplateSelect?: (templateId: string) => void;
@@ -25,9 +24,10 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ onTemplateSelect }) =
     useEffect(() => {
         const fetchTemplates = async () => {
             try {
-                const response = await apiClient.get<{ templates: Template[] }>('/api/templates');
+                const response = await templateAPI.list();
                 setTemplates(response.data.templates || []);
             } catch (err) {
+                console.error('Error loading templates:', err);
                 setError(err instanceof Error ? err.message : 'Failed to load templates');
             } finally {
                 setLoading(false);

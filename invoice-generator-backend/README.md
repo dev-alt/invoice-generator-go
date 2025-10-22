@@ -1,99 +1,428 @@
-# Invoice Generator Go
+# Invoice Generator Backend
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/your-username/invoice-generator-go)](https://goreportcard.com/report/github.com/your-username/invoice-generator-go)
-[![Build Status](https://github.com/your-username/invoice-generator-go/actions/workflows/go.yml/badge.svg)](https://github.com/your-username/invoice-generator-go/actions/workflows/go.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+> Go API server for invoice management and PDF generation
 
-**Streamline your invoicing process with Invoice Generator Go!** This powerful and flexible web application, built entirely in Go, empowers you to effortlessly create, manage, and deliver professional-looking invoices. Whether you're a freelancer, small business owner, or developer needing an invoicing solution, this project provides the tools you need.
+This is the backend service for the Invoice Generator application, built with Go and the Gin web framework.
 
-## What Invoice Generator Go Offers:
+---
 
-- **Effortless Invoice Creation:** A user-friendly interface makes generating detailed invoices quick and simple. Spend less time on paperwork and more time on your business.
-- **Professional PDF Generation:** Automatically generate polished, downloadable PDF invoices from your data using reliable `wkhtmltopdf` integration.
-- **Template Customization:**
-  - **Bring Your Own Design:** Upload and manage custom HTML templates to perfectly match your brand identity.
-  - **Built-in Options:** Get started quickly with included basic, minimalistic, and modern templates.
-  - **Personalization:** Easily add your company logo and custom background images to invoices.
-- **Secure & Reliable:**
-  - **User Authentication:** Protects your data and your clients' information with robust JWT-based authentication.
-  - **Secure File Storage:** Ensures generated PDFs and uploaded assets are stored safely.
-- **Developer Friendly:**
-  - **API-First Design:** Built with a clean RESTful API, making it easy to integrate invoice generation into your existing applications or build custom frontends.
-  - **Extensible:** Designed with clear separation of concerns, making it easier to add new features or modify existing ones. (e.g., Multi-Language Support and RBAC planned).
-- **Responsive Design:** Access and manage your invoices seamlessly across desktops, tablets, and mobile devices.
+## Technology Stack
 
-## Tech Stack
+- **Language**: Go 1.23
+- **Web Framework**: Gin
+- **Database**: PostgreSQL (using database/sql)
+- **Cache**: Redis integration ready
+- **Authentication**: JWT (golang-jwt/jwt/v5)
+- **Password Hashing**: bcrypt
+- **Migrations**: golang-migrate
+- **PDF Generation**: wkhtmltopdf
 
-- **Backend:** Go (Golang)
-- **Web Framework:** Gin
-- **Database:** PostgreSQL
-- **Caching/Sessions:** Redis
-- **PDF Generation:** `wkhtmltopdf`
-- **Authentication:** JWT (JSON Web Tokens)
-- **Deployment (Optional):** NGINX, Docker
-
-## Prerequisites
-
-- **Go:** 1.18 or higher
-- **PostgreSQL:** 12 or higher
-- **Redis:** 6 or higher
-- **`wkhtmltopdf`:** 0.12.6 or higher (must be in system `PATH`)
-- **Docker & Docker Compose:** (Recommended for easy setup)
+---
 
 ## Project Structure
 
 ```
-invoice-generator-go/
-├── api/          # API handlers, routes, middleware
-├── cmd/          # Main application entry point (main.go)
-├── config/       # Configuration loading
-├── migrations/   # Database schema migrations
-├── models/       # Data structures (Invoice, User, Template)
-├── pdf/          # PDF generation logic
-├── storage/      # Database interaction layer (PostgreSQL)
-├── templates/    # Default HTML invoice templates
-├── utils/        # Utility functions (auth, JWT, etc.)
-├── .gitignore
-├── docker-compose.yml # For local development environment
-├── Dockerfile        # For building the application container
-├── Dockerfile.migrate # For running migrations
-├── go.mod
-├── go.sum
-├── init.sql      # Initial database setup script
-├── README.md     # This file
-└── scripts/      # Helper scripts (e.g., run-migrations.sh)
+invoice-generator-backend/
+├── api/                    # HTTP handlers and middleware
+│   ├── routes.go          # Route definitions
+│   ├── middleware.go      # JWT authentication middleware
+│   ├── users.go           # User registration/login
+│   ├── invoices.go        # Invoice CRUD operations
+│   └── templates.go       # Template management
+│
+├── cmd/                    # Application entry point
+│   └── main.go            # Server initialization
+│
+├── config/                 # Configuration management
+│   └── config.go          # Load env vars
+│
+├── models/                 # Data structures
+│   └── models.go          # User, Invoice, Template, InvoiceItem
+│
+├── storage/                # Data access layer
+│   ├── postgres.go        # Database connection
+│   ├── users.go           # User queries
+│   ├── invoices.go        # Invoice queries
+│   └── templates.go       # Template queries
+│
+├── utils/                  # Utility functions
+│   ├── jwt.go             # JWT generation and validation
+│   └── auth.go            # Password hashing with bcrypt
+│
+├── pdf/                    # PDF generation
+│   └── generator.go       # wkhtmltopdf integration
+│
+├── migrations/             # Database migrations
+│   ├── 000001_initial_schema.up.sql
+│   └── 000001_initial_schema.down.sql
+│
+├── go.mod                  # Go module dependencies
+├── go.sum                  # Dependency checksums
+├── Dockerfile              # Production Docker image
+├── Dockerfile.migrate      # Migration runner image
+└── init.sql               # PostgreSQL initialization
 ```
 
-## Getting Started
+---
 
-1.  **Clone the repository:**
+## Architecture
 
-    ```bash
-    git clone https://github.com/your-username/invoice-generator-go.git
-    cd invoice-generator-go
-    ```
+### Layered Design
 
-2.  **Configure Environment Variables:**
+The backend follows a clean layered architecture:
 
-    - Copy `invoice-generator-db/.env.example` to `invoice-generator-db/.env`.
-    - Update the `.env` file with your PostgreSQL credentials.
-    - Configure application settings (JWT secret, etc.) potentially via a `config.yaml` or environment variables directly (refer to `config/config.go`).
+1. **API Layer** (`api/`) — HTTP handlers, routing, middleware
+2. **Business Logic** — Model validation and processing
+3. **Storage Layer** (`storage/`) — Database interactions
+4. **Utilities** (`utils/`) — Cross-cutting concerns (JWT, auth)
 
-3.  **Run with Docker Compose (Recommended):**
+### Key Patterns
 
-    ```bash
-    docker-compose up -d --build
-    ```
+- **Dependency Injection** — Configuration passed through functions
+- **Middleware Chain** — Authentication via Gin middleware
+- **Repository Pattern** — Storage layer abstracts database access
+- **UUID Primary Keys** — All entities use UUIDs (uuid-ossp extension)
 
-    This will start the Go application, PostgreSQL database, and Redis. The database migrations will be applied automatically on startup.
+---
 
-4.  **Access the API:**
-    The API should now be running (typically on `http://localhost:8080`, check your configuration). You can use tools like `curl` or Postman to interact with the endpoints defined in `api/routes.go`.
+## API Endpoints
 
-## Contributing
+### Public Routes
 
-Contributions are welcome! Please feel free to submit issues or pull requests.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/register` | Create new user account |
+| POST | `/api/login` | Authenticate user, return JWT |
 
-## License
+### Protected Routes (Require JWT)
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details (assuming you add one).
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/invoices` | Create new invoice |
+| GET | `/api/invoices/:id` | Get invoice details |
+| POST | `/api/templates` | Upload HTML template |
+| GET | `/api/templates` | List user's templates |
+
+**Authentication**: Include JWT in Authorization header:
+```
+Authorization: Bearer <jwt_token>
+```
+
+---
+
+## Configuration
+
+### Environment Variables
+
+The backend reads configuration from environment variables:
+
+```env
+# Database
+POSTGRES_URL=postgresql://invoice_user:password@localhost:5432/invoice_db?sslmode=disable
+
+# Redis (optional)
+REDIS_URL=redis://localhost:6379
+
+# JWT
+JWT_SECRET=your_secret_key_here
+
+# Storage
+FILE_STORAGE_PATH=./storage/files
+
+# CORS
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+```
+
+See `config/config.go` for the complete list.
+
+---
+
+## Development
+
+### Prerequisites
+
+- Go 1.23 or higher
+- PostgreSQL 15
+- Redis 7 (optional)
+- wkhtmltopdf 0.12.6+
+- golang-migrate (for migrations)
+
+### Setup
+
+```bash
+# Install dependencies
+go mod download
+
+# Verify dependencies
+go mod verify
+go mod tidy
+```
+
+### Run Locally
+
+```bash
+# Set up environment (load .env file)
+export $(cat .env | xargs)
+
+# Run the server
+go run ./cmd
+
+# Or build and run
+go build -o invoice-generator ./cmd
+./invoice-generator
+```
+
+The server will start on port 8080 (or `$API_PORT` if set).
+
+### Testing
+
+```bash
+# Run all tests
+go test ./...
+
+# Run tests with coverage
+go test -cover ./...
+
+# Verbose output
+go test -v ./...
+
+# Test specific package
+go test ./storage
+```
+
+### Code Quality
+
+```bash
+# Format code
+go fmt ./...
+
+# Run linter (requires golangci-lint)
+golangci-lint run
+
+# Vet code
+go vet ./...
+```
+
+---
+
+## Database
+
+### Migrations
+
+Migrations are managed with [golang-migrate](https://github.com/golang-migrate/migrate).
+
+```bash
+# Run all migrations up
+migrate -database "$POSTGRES_URL" -path migrations up
+
+# Rollback one migration
+migrate -database "$POSTGRES_URL" -path migrations down 1
+
+# Check current version
+migrate -database "$POSTGRES_URL" -path migrations version
+
+# Force to specific version (use carefully!)
+migrate -database "$POSTGRES_URL" -path migrations force <version>
+```
+
+### Create New Migration
+
+```bash
+cd migrations
+
+# Create new migration files
+touch 000002_add_feature.up.sql
+touch 000002_add_feature.down.sql
+```
+
+**Naming convention**: `NNNNNN_description.up.sql` and `NNNNNN_description.down.sql`
+
+### Schema Overview
+
+- **users** — User accounts with bcrypt hashed passwords
+- **templates** — HTML templates for invoice generation
+- **invoices** — Invoice records with financial data
+- **invoice_items** — Line items for each invoice
+
+All tables use UUID primary keys via the `uuid-ossp` extension.
+
+---
+
+## Authentication & Security
+
+### JWT Tokens
+
+- **Signing**: HMAC-SHA256 with `JWT_SECRET`
+- **Expiration**: 24 hours from issue time
+- **Claims**: `user_id`, `exp`, `iat`
+
+### Password Security
+
+- **Hashing**: bcrypt with automatic salt
+- **Validation**: Constant-time comparison
+- **Storage**: Only password hashes stored in database
+
+### Middleware
+
+The `AuthMiddleware()` function:
+1. Extracts JWT from `Authorization: Bearer <token>` header
+2. Validates signature and expiration
+3. Extracts user ID and adds to Gin context
+4. Returns 401 Unauthorized if invalid
+
+---
+
+## PDF Generation
+
+### How It Works
+
+1. **Template Selection** — Load HTML template from database
+2. **Data Injection** — Populate template with invoice data using `html/template`
+3. **HTML Generation** — Execute template to produce HTML
+4. **PDF Conversion** — Call wkhtmltopdf to convert HTML to PDF
+5. **Storage** — Save PDF to `FILE_STORAGE_PATH`
+
+### Template Variables
+
+Templates have access to:
+- `Invoice` — Invoice record (ID, number, dates, amounts, etc.)
+- `InvoiceItems` — Array of line items
+- `Company` — User/company details
+
+Example template syntax:
+```html
+<h1>Invoice #{{.Invoice.InvoiceNumber}}</h1>
+<p>Customer: {{.Invoice.CustomerName}}</p>
+{{range .InvoiceItems}}
+  <li>{{.Description}} - ${{.TotalPrice}}</li>
+{{end}}
+```
+
+---
+
+## Docker
+
+### Build Image
+
+```bash
+# Build backend image
+docker build -t invoice-backend .
+
+# Build with specific target
+docker build --target production -t invoice-backend .
+```
+
+### Run Container
+
+```bash
+# Run with environment variables
+docker run -p 8080:8080 \
+  -e POSTGRES_URL="postgresql://..." \
+  -e JWT_SECRET="secret" \
+  invoice-backend
+```
+
+### Multi-Stage Build
+
+The Dockerfile uses multi-stage builds:
+1. **Builder stage** — Compile Go binary
+2. **Production stage** — Minimal Alpine image with binary only
+
+This reduces final image size significantly.
+
+---
+
+## Deployment
+
+### Production Checklist
+
+- [ ] Set strong `JWT_SECRET` (min 32 characters)
+- [ ] Use secure database credentials
+- [ ] Enable PostgreSQL SSL (`sslmode=require`)
+- [ ] Configure proper CORS origins
+- [ ] Set up log aggregation
+- [ ] Enable health check endpoint
+- [ ] Configure reverse proxy (nginx, traefik)
+- [ ] Set up automated backups
+- [ ] Monitor application metrics
+
+### Health Check
+
+The backend includes a `/health` endpoint for container orchestration.
+
+---
+
+## Troubleshooting
+
+### Database Connection Fails
+
+```bash
+# Test connection manually
+psql -U invoice_user -d invoice_db -h localhost
+
+# Check connection string format
+# postgresql://user:password@host:port/database?sslmode=disable
+
+# Verify PostgreSQL is running
+sudo service postgresql status
+```
+
+### Migration Errors
+
+```bash
+# Check current migration version
+migrate -database "$POSTGRES_URL" -path migrations version
+
+# View migration status in database
+psql -U invoice_user -d invoice_db -c "SELECT * FROM schema_migrations;"
+
+# Fix stuck migration
+migrate -database "$POSTGRES_URL" -path migrations force <version>
+```
+
+### JWT Validation Fails
+
+- Ensure `JWT_SECRET` matches between token generation and validation
+- Check token hasn't expired (24-hour default)
+- Verify Authorization header format: `Bearer <token>`
+- Check for clock skew between systems
+
+### PDF Generation Fails
+
+```bash
+# Verify wkhtmltopdf is installed
+which wkhtmltopdf
+wkhtmltopdf --version
+
+# Check file permissions
+ls -la ./storage/files
+
+# Test wkhtmltopdf directly
+echo "<h1>Test</h1>" > test.html
+wkhtmltopdf test.html test.pdf
+```
+
+---
+
+## Dependencies
+
+### Core Dependencies
+
+```go
+github.com/gin-gonic/gin          // Web framework
+github.com/lib/pq                 // PostgreSQL driver
+github.com/golang-jwt/jwt/v5      // JWT implementation
+github.com/google/uuid            // UUID generation
+golang.org/x/crypto/bcrypt        // Password hashing
+github.com/joho/godotenv          // Environment variable loading
+github.com/gin-contrib/cors       // CORS middleware
+```
+
+### Development Tools
+
+- `golang-migrate/migrate` — Database migrations
+- `golangci-lint` — Code linting (optional)
+
+---
+
+**Need help?** Check logs, verify environment variables, and ensure all services are running

@@ -22,8 +22,8 @@ type Template struct {
 	UserID        uuid.UUID `json:"user_id" gorm:"type:uuid"`
 	Name          string    `json:"name"`
 	Language      string    `json:"language"`
-	BackgroundURL string    `json:"background_url"`
-	LogoURL       string    `json:"logo_url"`
+	BackgroundURL *string   `json:"background_url,omitempty"`
+	LogoURL       *string   `json:"logo_url,omitempty"`
 	Content       string    `json:"content"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`

@@ -116,9 +116,11 @@ const RegisterForm = () => {
                             value: 8,
                             message: 'Password must be at least 8 characters',
                         },
-                        pattern: {
-                            value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-                            message: 'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character',
+                        validate: {
+                            hasUppercase: (value) => /[A-Z]/.test(value) || 'Password must contain at least one uppercase letter',
+                            hasLowercase: (value) => /[a-z]/.test(value) || 'Password must contain at least one lowercase letter',
+                            hasNumber: (value) => /\d/.test(value) || 'Password must contain at least one number',
+                            hasSpecial: (value) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(value) || 'Password must contain at least one special character',
                         },
                     })}
                     className={errors.password ? 'border-red-500' : ''}

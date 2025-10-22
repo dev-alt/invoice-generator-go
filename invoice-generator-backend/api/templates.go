@@ -81,14 +81,14 @@ func listTemplates(c *gin.Context) {
 	// Parse user ID as UUID
 	userUUID, err := uuid.Parse(userID.(string))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format", "details": err.Error()})
 		return
 	}
 
 	// Get templates for the user
 	templates, err := storage.GetTemplatesByUserID(userUUID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve templates"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve templates", "details": err.Error()})
 		return
 	}
 

@@ -127,3 +127,64 @@ func UpdateInvoice(invoice *models.Invoice) error {
 
 	return nil
 }
+
+// GetInvoicesByUserID retrieves all invoices for a given user ID.
+func GetInvoicesByUserID(userID uuid.UUID) ([]models.Invoice, error) {
+	query := `
+        SELECT id, user_id, template_id, invoice_number, status, customer_name, customer_email, customer_address, invoice_date, due_date, currency, subtotal, tax_rate, tax_amount, total_amount, notes, pdf_path, created_at, updated_at
+        FROM invoices
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+    `
+	rows, err := DB.Query(query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get invoices by user ID: %v", err)
+	}
+	defer rows.Close()
+
+	var invoices []models.Invoice
+	for rows.Next() {
+		var invoice models.Invoice
+		if err := rows.Scan(&invoice.ID, &invoice.UserID, &invoice.TemplateID, &invoice.InvoiceNumber, &invoice.Status, &invoice.CustomerName, &invoice.CustomerEmail, &invoice.CustomerAddress, &invoice.InvoiceDate, &invoice.DueDate, &invoice.Currency, &invoice.Subtotal, &invoice.TaxRate, &invoice.TaxAmount, &invoice.TotalAmount, &invoice.Notes, &invoice.PdfPath, &invoice.CreatedAt, &invoice.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan invoice: %v", err)
+		}
+		invoices = append(invoices, invoice)
+	}
+
+	return invoices, nil
+}
+
+// DeleteInvoice deletes an invoice by its ID.
+func DeleteInvoice(invoiceID uuid.UUID) error {
+	// First, delete all related invoice items
+	_, err := DB.Exec("DELETE FROM invoice_items WHERE invoice_id = $1", invoiceID)
+	if err != nil {
+		return fmt.Errorf("failed to delete invoice items: %v", err)
+	}
+
+	// Then delete the invoice
+	result, err := DB.Exec("DELETE FROM invoices WHERE id = $1", invoiceID)
+	if err != nil {
+		return fmt.Errorf("failed to delete invoice: %v", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %v", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("no invoice found with ID: %s", invoiceID)
+	}
+
+	return nil
+}
+
+// DeleteInvoiceItems deletes all items for a given invoice.
+func DeleteInvoiceItems(invoiceID uuid.UUID) error {
+	_, err := DB.Exec("DELETE FROM invoice_items WHERE invoice_id = $1", invoiceID)
+	if err != nil {
+		return fmt.Errorf("failed to delete invoice items: %v", err)
+	}
+	return nil
+}

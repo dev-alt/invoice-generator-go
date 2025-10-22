@@ -2,6 +2,8 @@ package storage
 
 import (
 	"fmt"
+	"log"
+	"strings"
 	"invoice-generator-go/models"
 
 	"github.com/google/uuid"
@@ -16,12 +18,20 @@ func CreateUser(user *models.User) (string, error) {
         RETURNING id
     `
 
+	log.Printf("Executing query to insert user - Email: %s, ID: %s", user.Email, user.ID)
+
 	var id uuid.UUID
 	err := DB.QueryRow(query, user.ID, user.Email, user.PasswordHash, user.CompanyName, user.CreatedAt, user.UpdatedAt).Scan(&id)
 	if err != nil {
-		return "", fmt.Errorf("failed to insert user: %v", err)
+		log.Printf("Database error during user creation: %v", err)
+		// Check for specific errors
+		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique constraint") {
+			return "", fmt.Errorf("user with email %s already exists", user.Email)
+		}
+		return "", fmt.Errorf("database error: %v", err)
 	}
 
+	log.Printf("User inserted successfully with ID: %s", id.String())
 	return id.String(), nil
 }
 
